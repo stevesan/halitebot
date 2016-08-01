@@ -112,6 +112,7 @@ namespace hlt{
 		}
 
         void setSite(Location l, Site site) {
+            l = getLocation(l, STILL);
             contents[l.y][l.x] = site;
         }
 

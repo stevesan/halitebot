@@ -59,6 +59,30 @@ void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
     }
 }
 
+int pickMove( const hlt::GameMap& map, hlt::Location u, hlt::PlayerId myId ) {
+    hlt::Site curr = map.getSite(u);
+
+    hlt::Site dests[] = {
+        curr,
+        map.getSite(u, NORTH),
+        map.getSite(u, EAST),
+        map.getSite(u, SOUTH),
+        map.getSite(u, WEST)};
+
+    if( curr.strength < 5*curr.production ) {
+        return STILL;
+    }
+
+    // if we can take any dests, and the production is higher, do it with some prob
+    for( int d : DIRECTIONS ) {
+        auto nbor = dests[d];
+        if( nbor.owner != myId &&  nbor.strength < curr.strength ) {
+            return d;
+        }
+    }
+    return STILL;
+}
+
 int main() {
 	srand(time(NULL));
 
@@ -71,9 +95,7 @@ int main() {
 	getInit(myId, presentMap);
 	sendInit("TheDarkness");
 
-    unsigned int evalsPerFrame = 100;
-    std::vector< hlt::MoveSet > movesets(evalsPerFrame);
-	hlt::GameMap workMap(presentMap);
+    hlt::MoveSet moves;
 
     int frameCount = 0;
 
@@ -82,35 +104,18 @@ int main() {
         dbg << "-- frame " << frameCount << std::endl;
          
         getFrame(presentMap);
-        int bestset = -1;
-        utility bestutil = 0;
+        moves.clear();
 
-        for( int i = 0; i < evalsPerFrame; i++ ) {
-            hlt::MoveSet& moves = movesets[i];
-            moves.clear();
-
-            FORMAP(presentMap, x, y) {
-                hlt::Location u = {x,y};
-                hlt::Site src = presentMap.getSite(u);
-                if (src.owner == myId) {
-                    unsigned char d = (unsigned char)(rand() % 5);
-                    moves.insert({ u, d });
-                }
+        FORMAP(presentMap, x, y) {
+            hlt::Location u = {x,y};
+            hlt::Site curr = presentMap.getSite(u);
+            if( curr.owner != myId ) {
+                continue;
             }
-
-            presentMap.copyInto(workMap);
-            workMap.simMoves(moves, myId);
-            utility util = evalUtil(myId, workMap);
-
-            if(util > bestutil || bestset == -1) {
-                bestutil = util;
-                bestset = i;
-            }
+            moves.insert({ u, (unsigned char)pickMove(presentMap, u, myId) });
         }
 
-        dbg << "using moveset " << bestset << " with util " << bestutil << std::endl;
-        output_moveset(dbg, movesets[bestset]);
-        sendFrame(movesets[bestset]);
+        sendFrame(moves);
         frameCount++;
 	}
 
