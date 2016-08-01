@@ -11,44 +11,6 @@
 
 typedef int utility;
 
-template<typename MAP> utility evalUtil(unsigned char myId, const MAP& map)
-{
-    // first, count how many i have vs. other players (non-0)
-    unsigned int player2terr[MAX_PLAYERS];
-    memset(player2terr, 0, sizeof(player2terr[0]) * MAX_PLAYERS);
-
-    FORMAP(map, x, y) {
-        hlt::Site site = map.getSite({x,y});
-        if( site.owner != 0 ) {
-            player2terr[site.owner]++;
-        }
-    }
-
-    unsigned int bestPlayer = -1;
-    for( int i = 1; i < MAX_PLAYERS; i++ ) {
-        if( bestPlayer == -1 || player2terr[i] > player2terr[bestPlayer] ) {
-            bestPlayer = i;
-        }
-    }
-
-    bool catchUp = false;
-    const int lagTiles = 2;
-    if( bestPlayer != myId && player2terr[bestPlayer] > player2terr[myId] + lagTiles ) {
-        catchUp = true;
-    }
-
-
-    int terrUtil = catchUp ? 256 : 20;
-    utility util = 0;
-    FORMAP(map, x, y) {
-        hlt::Site site = map.getSite({x,y});
-        if( site.owner == myId ) {
-            util += terrUtil + site.strength;
-        }
-    }
-    return util;
-}
-
 std::string DIR2STR[] = { "Still", "North", "East", "South", "West" };
 
 void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
@@ -61,6 +23,7 @@ void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
 
 int pickMove( const hlt::GameMap& map, hlt::Location u, hlt::PlayerId myId ) {
     hlt::Site curr = map.getSite(u);
+    const int ENOUGH_STRENGTH = 200;
 
     hlt::Site dests[] = {
         curr,
@@ -69,24 +32,48 @@ int pickMove( const hlt::GameMap& map, hlt::Location u, hlt::PlayerId myId ) {
         map.getSite(u, SOUTH),
         map.getSite(u, WEST)};
 
-    if( curr.strength < 5*curr.production ) {
+    if( curr.strength < 4*curr.production ) {
         return STILL;
     }
 
-    // if we can take any dests, and the production is higher, do it with some prob
+    // if we can take any dests, do it
     for( int d : DIRECTIONS ) {
         auto nbor = dests[d];
-        if( nbor.owner != myId &&  nbor.strength < curr.strength ) {
+        if( nbor.owner != myId && nbor.strength < curr.strength ) {
             return d;
         }
     }
+
+    // if I am surrounded by at least 2 maxed out allies, move to one of the non-maxed out ones
+    int numBigs = 0;
+    for( int d : CARDINALS ) {
+        auto nbor = dests[d];
+        if( nbor.owner == myId && nbor.strength >= ENOUGH_STRENGTH ) {
+            numBigs++;
+        }
+    }
+
+    if( numBigs > 0 && numBigs < 4 ) {
+        // ok, find a non-big and go there
+        for( int d : CARDINALS ) {
+            auto nbor = dests[d];
+            if( nbor.owner == myId && nbor.strength < ENOUGH_STRENGTH ) {
+                return d;
+            }
+        }
+    }
+
     return STILL;
 }
 
-int main() {
+int main(int argc, char** argv) {
 	srand(time(NULL));
 
-	std::ofstream dbg("dbg.log");
+    std::string dbgf("dbg.log");
+    if( argc > 1 ) {
+        dbgf = argv[1];
+    }
+	std::ofstream dbg(dbgf);
 
 	std::cout.sync_with_stdio(0);
 
