@@ -128,66 +128,65 @@ namespace hlt{
             }
         }
 
-        bool simMoves(const MoveSet& moves, PlayerId id) {
-            for(auto move = moves.begin(); move != moves.end(); ++move) {
-                auto loc = move->loc;
-                auto dir = move->dir;
-                Site src = getSite(loc);
-                if(src.owner != id) {
-                    return false;
-                }
+        // this is an approximation only - of course, it does not sim other players' moves
+        bool applyMove(const Move& move, PlayerId id) {
+            auto loc = move.loc;
+            auto dir = move.dir;
+            Site src = getSite(loc);
+            if(src.owner != id) {
+                return false;
+            }
 
-                if( dir == STILL ) {
-                    src.strength += src.production;
-                    setSite(loc, src);
+            if( dir == STILL ) {
+                src.strength += src.production;
+                setSite(loc, src);
+            }
+            else {
+                Site dest = getSite(loc, dir);
+                if(dest.owner == id) {
+                    // combine
+                    dest.strength = (unsigned char)
+                        std::min((int)255, (int)dest.strength + (int)src.strength);
+                    src.strength = 0;
                 }
                 else {
-                    Site dest = getSite(loc, dir);
-                    if(dest.owner == id) {
-                        // combine
-                        dest.strength = (unsigned char)
-                            std::min((int)255, (int)dest.strength + (int)src.strength);
-                        src.strength = 0;
+                    // combat
+                    int ds = dest.strength;
+                    int ss = src.strength;
+                    dest.strength = (unsigned char)std::max(0, (int)dest.strength - ss);
+                    src.strength = (unsigned char)std::max(0, (int)src.strength - ds);
+
+                    if( src.strength == 0 && dest.strength == 0 ) {
+                        // both die
+                        src.owner = 0;
+                        dest.owner = 0;
                     }
                     else {
-                        // combat
-                        int ds = dest.strength;
-                        int ss = src.strength;
-                        dest.strength = (unsigned char)std::max(0, (int)dest.strength - ss);
-                        src.strength = (unsigned char)std::max(0, (int)src.strength - ds);
-
-                        if( src.strength == 0 && dest.strength == 0 ) {
-                            // both die
+                        if( src.strength == 0 ) {
+                            // lose..
                             src.owner = 0;
-                            dest.owner = 0;
+                        }
+                        else if( dest.strength == 0 ) {
+                            // win!
+                            // do move
+                            dest.owner = id;
+                            dest.strength = src.strength;
+                            src.strength = 0;
                         }
                         else {
-                            if( src.strength == 0 ) {
-                                // lose..
-                                src.owner = 0;
-                            }
-                            else if( dest.strength == 0 ) {
-                                // win!
-                                // do move
-                                dest.owner = id;
-                                dest.strength = src.strength;
-                                src.strength = 0;
-                            }
-                            else {
-                                // neither is dead
-                                // owners do not change
-                            }
+                            // neither is dead
+                            // owners do not change
                         }
-
-                        dest.owner = id;
-                        dest.strength = src.strength;
-                        src.strength = 0;
                     }
 
-                    // apply mods
-                    setSite(loc, src);
-                    setSite(loc, dir, dest);
+                    dest.owner = id;
+                    dest.strength = src.strength;
+                    src.strength = 0;
                 }
+
+                // apply mods
+                setSite(loc, src);
+                setSite(loc, dir, dest);
             }
             return true;
         }
