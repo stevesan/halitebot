@@ -79,7 +79,10 @@ void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
 // TEMP TEMP global var
 hlt::Location startLoc;
 
-int pickMove( const hlt::GameMap& map, hlt::Location u, hlt::PlayerId myId ) {
+int pickMove(
+        const hlt::GameMap& map,
+        const hlt::GameMap& nextMap,
+        hlt::Location u, hlt::PlayerId myId ) {
     hlt::Site curr = map.getSite(u);
     const int ENOUGH_STRENGTH = 255/2;
 
@@ -90,71 +93,52 @@ int pickMove( const hlt::GameMap& map, hlt::Location u, hlt::PlayerId myId ) {
         map.getSite(u, SOUTH),
         map.getSite(u, WEST)};
 
+    hlt::Site nextDests[] = {
+        nextMap.getSite(u),
+        nextMap.getSite(u, NORTH),
+        nextMap.getSite(u, EAST),
+        nextMap.getSite(u, SOUTH),
+        nextMap.getSite(u, WEST)};
+
     if( curr.strength < 3*curr.production ) {
         return STILL;
     }
 
     // if we can take any dests, do it
     for( int d : CARDINALS ) {
-        auto nbor = dests[d];
-        if( nbor.owner != myId && nbor.strength < curr.strength ) {
+        auto u = nextDests[d];
+        if( u.owner != myId && u.strength < curr.strength ) {
             return d;
         }
     }
 
-    // if we're surrounded by all friendlies...
-    bool internal = true;
-    for( int d : CARDINALS  ) {
-        if( dests[d].owner != myId ) {
-            internal = false;
-            break;
-        }
-    }
-
-    // move away from the cetner of mass if we're big enough and internal
-    /*
-    if( internal && curr.strength > ENOUGH_STRENGTH ) {
-        int dx = 0;
-        int dy = 0;
-        int leftGoal = startLoc.x - map.width/2 + 1;
-        int rightGoal = startLoc.y + map.width/2 - 1;
-        if( abs(leftGoal - u.x) > abs(rightGoal - u.x) ) {
-            // should go right
-            dx = 1;
-        }
-        else {
-            dx = 0;
-        }
-
-        int upGoal = startLoc.y + map.height/2 - 1;
-        int downGoal = startLoc.y - map.height/2 + 1;
-        if( abs(upGoal - u.y) > abs(downGoal - u.y) ) {
-            // go down
-            dy = 0;
-        }
-        else {
-            dy = 1;
-        }
-    }
-    */
-
     // if I am surrounded by at least 2 maxed out allies, move to one of the non-maxed out ones
     int numBigs = 0;
     for( int d : CARDINALS ) {
-        auto nbor = dests[d];
-        if( nbor.owner == myId && nbor.strength >= ENOUGH_STRENGTH ) {
+        if( dests[d].owner == myId && dests[d].strength >= ENOUGH_STRENGTH ) {
             numBigs++;
         }
     }
 
     if( numBigs > 0 && numBigs < 4 ) {
+        // overcrowded.
+        // find the weakest one and merge, to minimize overflow
+        int bestD = STILL;
         // ok, find a non-big and go there
         for( int d : CARDINALS ) {
-            auto nbor = dests[d];
-            if( nbor.owner == myId && nbor.strength < ENOUGH_STRENGTH ) {
-                return d;
+            if( dests[d].owner == myId ) {
+                /*
+                if( bestD == STILL || dests[d].strength < dests[bestD].strength ) {
+                    bestD = d;
+                }
+                */
+                if( dests[d].strength < ENOUGH_STRENGTH ) {
+                    return d;
+                }
             }
         }
+
+        return bestD;
     }
 
     return STILL;
@@ -177,6 +161,7 @@ int main(int argc, char** argv) {
 	sendInit("TheDarkness");
 
     hlt::MoveSet moves;
+	hlt::GameMap nextMap(presentMap);
 
     int frameCount = 0;
 
@@ -185,6 +170,7 @@ int main(int argc, char** argv) {
         dbg << "-- frame " << frameCount << std::endl;
          
         getFrame(presentMap);
+        presentMap.copyInto(nextMap);
         moves.clear();
 
         FORMAP(presentMap, x, y) {
@@ -193,9 +179,9 @@ int main(int argc, char** argv) {
             if( curr.owner != myId ) {
                 continue;
             }
-            hlt::Move move = {u, (unsigned char)pickMove(presentMap, u, myId)};
+            hlt::Move move = {u, (unsigned char)pickMove(presentMap, nextMap, u, myId)};
+            nextMap.applyMove(move, myId);
             moves.insert(move);
-            //presentMap.applyMove(move, myId);
         }
 
         sendFrame(moves);
