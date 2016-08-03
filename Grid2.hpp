@@ -10,8 +10,21 @@ template <typename T> class Grid2 {
     T* data;
     Int2 dims;
 
-    Grid2( Int2 _dims ) : dims(_dims), data(NULL)
+    Grid2( Int2 _dims ) : data(NULL)
     {
+        reset(_dims);
+    }
+
+    Grid2() : data(NULL)
+    {
+    }
+
+    virtual ~Grid2() {
+        delete data;
+    }
+
+    void reset(Int2 _dims) {
+        dims = _dims;
         data = new T[dims.product()];
     }
 

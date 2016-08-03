@@ -17,7 +17,7 @@ def runtest(testnum):
     print 'done', testnum, "WON!" if won else "lost..."
     return won
 
-tests = 32
-p = Pool(4)
+tests = 128
+p = Pool(2)
 didwin = p.map(runtest, range(tests))
 print didwin.count(True), len(didwin)
