@@ -5,6 +5,7 @@ import multiprocessing
 
 sp.check_call('make mine && make basic', shell=True)
 
+
 def runtest(testnum):
     botcmds = [
         "bin/MyBot dbg-%d.log" % testnum,
@@ -12,7 +13,7 @@ def runtest(testnum):
     ]
         
     shellcmd = 'tools/environment -d 20 20 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
-    print shellcmd
+    # print shellcmd
     out = sp.check_output(shellcmd, shell=True)
     won = False
     for line in out.split('\n'):
