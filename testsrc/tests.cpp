@@ -1,8 +1,9 @@
 
 #include <stdlib.h>
 #include <iostream>
-#include "Grid2.hpp"
-#include "GridAlgos.hpp"
+#include "../src/Int2.hpp"
+#include "../src/Grid2.hpp"
+#include "../src/GridAlgos.hpp"
 #include <queue>
 
 #include <cassert>
