@@ -5,64 +5,13 @@
 #include <time.h>
 #include <set>
 #include <fstream>
+#include <queue>
 
 #include "hlt.hpp"
 #include "networking.hpp"
 
-class Int2 {
-    public:
-
-    int x, y;
-
-    Int2(int _x, int _y) : x(_x), y(_y)
-    {
-    }
-
-    Int2(const Int2& src) : x(src.x), y(src.y)
-    {
-    }
-
-    Int2 operator%(Int2 other) {
-        return Int2( x % other.x, y % other.y );
-    }
-
-    Int2 operator+(Int2 other) {
-        return Int2( x + other.x, y + other.y );
-    }
-
-    Int2 operator-(Int2 other) {
-        return Int2( x - other.x, y - other.y );
-    }
-
-    int product() { return x * y; }
-    int sum() { return x + y; }
-};
-
-template <typename T> class Grid2 {
-    public:
-
-    T* data;
-    Int2 dims;
-
-    Grid2( Int2 _dims ) : dims(_dims), data(NULL)
-    {
-        data = new T[dims.product()];
-    }
-
-    T get(Int2 u) {
-        u = u % dims;
-        return data[u.y * width() + u.x];
-    }
-
-
-    T set(Int2 u, T val) {
-        u = u % dims;
-        data[u.y * width() + u.x] = val;
-    }
-
-    int width() { return dims.x; }
-    int height() { return dims.y; }
-};
+#include "Int2.hpp"
+#include "Grid2.hpp"
 
 typedef int utility;
 
