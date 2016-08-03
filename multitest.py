@@ -1,14 +1,19 @@
 #!/Users/Steve/anaconda/bin/python
 
 import subprocess as sp
-from multiprocessing import Pool
+import multiprocessing
 
 sp.check_call('make mine && make basic', shell=True)
 
 def runtest(testnum):
-    out = sp.check_output('tools/environment -d 20 20 "bin/MyBot dbg-%d.log" "bin/MyBotLastSub dbg-last-%d.log" | grep rank' % (testnum, testnum),
-    # out = sp.check_output('tools/environment -d 20 20 "bin/MyBot dbg-%d.log" "bin/BasicBot" | grep rank' % (testnum),
-            shell=True)
+    botcmds = [
+        "bin/MyBot dbg-%d.log" % testnum,
+        "bin/MyBotLastSub dbg-last-%d.log" % testnum
+    ]
+        
+    shellcmd = 'tools/environment -d 20 20 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
+    print shellcmd
+    out = sp.check_output(shellcmd, shell=True)
     won = False
     for line in out.split('\n'):
         if 'Player #1' in line and 'came in rank #1' in line:
@@ -18,6 +23,6 @@ def runtest(testnum):
     return won
 
 tests = 128
-p = Pool(2)
+p = multiprocessing.Pool(2)
 didwin = p.map(runtest, range(tests))
 print didwin.count(True), len(didwin)
