@@ -14,6 +14,7 @@
 #include "Int2.hpp"
 #include "Grid2.hpp"
 #include "GridAlgos.hpp"
+#include "Util.hpp"
 
 typedef int utility;
 
@@ -26,9 +27,6 @@ void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
         os << l.x << ", " << l.y << " : " << DIR2STR[d] << std::endl;
     }
 }
-
-// TEMP TEMP global var
-hlt::Location startLoc;
 
 class MyBot
 {
@@ -43,6 +41,10 @@ class MyBot
     hlt::Location asLoc(Int2 u) {
         u = u % mapDims();
         return { (unsigned short)u.x, (unsigned short)u.y };
+    }
+
+    Int2 asInt2(hlt::Location u) {
+        return Int2((int)u.x, (int)u.y);
     }
 
     void updateDF(std::queue<Int2>& dfChanged)
@@ -63,71 +65,59 @@ class MyBot
         assert( dfChanged.empty() );
     }
 
-    int pickMove(
-            const hlt::GameMap& map,
-            const hlt::GameMap& nextMap,
-            hlt::Location u, hlt::PlayerId myId ) {
-        hlt::Site curr = map.getSite(u);
-        const int ENOUGH_STRENGTH = 255/2;
+    int pick_move( hlt::Location u )
+    {
+        hlt::Site dests[5];
+       
+        for( int d : DIRECTIONS ) {
+            dests[d] = presentMap.getSite(u, d);
+        }
 
-        hlt::Site dests[] = {
-            curr,
-            map.getSite(u, NORTH),
-            map.getSite(u, EAST),
-            map.getSite(u, SOUTH),
-            map.getSite(u, WEST)};
+        hlt::Site src = dests[STILL];
 
-        hlt::Site nextDests[] = {
-            nextMap.getSite(u),
-            nextMap.getSite(u, NORTH),
-            nextMap.getSite(u, EAST),
-            nextMap.getSite(u, SOUTH),
-            nextMap.getSite(u, WEST)};
-
-        if( curr.strength < 3*curr.production ) {
+        if( src.strength < 3*src.production ) {
             return STILL;
         }
 
-        // if we can take any dests, do it
-        for( int d : CARDINALS ) {
-            auto u = nextDests[d];
-            if( u.owner != myId && u.strength < curr.strength ) {
-                return d;
-            }
+        if( df.get(asInt2(u)) == 1 ) {
+            auto this_attack_util = [&] (hlt::Site dst) {
+                return attack_util(src, dst);
+            };
+            return findMax<hlt::Site, int>(dests, 5, this_attack_util);
         }
-
-        // if I am surrounded by at least 2 maxed out allies, move to one of the non-maxed out ones
-        int numBigs = 0;
-        for( int d : CARDINALS ) {
-            if( dests[d].owner == myId && dests[d].strength >= ENOUGH_STRENGTH ) {
-                numBigs++;
-            }
+        else {
+            auto this_move_cost = [&] (hlt::Site dst) {
+                return move_cost(src, dst);
+            };
+            return findMin<hlt::Site, int>(dests, 5, this_move_cost);
         }
-
-        if( numBigs > 0 && numBigs < 4 ) {
-            // overcrowded.
-            // find the weakest one and merge, to minimize overflow
-            int bestD = STILL;
-            // ok, find a non-big and go there
-            for( int d : CARDINALS ) {
-                if( dests[d].owner == myId ) {
-                    /*
-                       if( bestD == STILL || dests[d].strength < dests[bestD].strength ) {
-                       bestD = d;
-                       }
-                     */
-                    if( dests[d].strength < ENOUGH_STRENGTH ) {
-                        return d;
-                    }
-                }
-            }
-
-            return bestD;
-        }
-
-        return STILL;
     }
 
+    void apply_move(hlt::Move move) {
+        auto src = presentMap.getSite(move.loc);
+        auto dst = presentMap.getSite(move.loc, move.dir);
+
+        if(move.dir == STILL) {
+            src.strength += src.production;
+        }
+        else {
+            if( dst.owner != src.owner ) {
+                dst.strength -= src.strength;
+                if( dst.strength <= 0) {
+                    dst.strength = 0;
+                    dst.owner = myId;
+                }
+            }
+            else {
+                dst.strength = std::min(255, (int)src.strength + (int)dst.strength);
+            }
+
+            src.strength = 0;
+        }
+
+        presentMap.setSite(move.loc, src);
+        presentMap.setSite(move.loc, move.dir, dst);
+    }
 
     public:
 
@@ -143,7 +133,6 @@ class MyBot
         std::cout.sync_with_stdio(0);
 
         getInit(myId, presentMap);
-        hlt::GameMap nextMap(presentMap);
         sendInit("TheDarkness");
 
         hlt::MoveSet moves;
@@ -154,19 +143,31 @@ class MyBot
 
         while(true) {
             getFrame(presentMap);
-            presentMap.copyInto(nextMap);
             updateDF(dfChanged);
             moves.clear();
 
-            FORMAP(presentMap, x, y) {
-                hlt::Location u = {x,y};
-                hlt::Site curr = presentMap.getSite(u);
-                if( curr.owner != myId ) {
-                    continue;
+            for( int phase_dist = 1; true; phase_dist++ ) {
+                int num_moved = 0;
+
+                FORMAP(presentMap, x, y) {
+                    hlt::Location u = {x,y};
+
+                    if( df.get(asInt2(u)) != phase_dist ) {
+                        continue;
+                    }
+
+                    hlt::Site curr = presentMap.getSite(u);
+                    assert(curr.owner == myId);
+                    hlt::Move move = {u, (unsigned char)pick_move(u)};
+                    apply_move(move);
+                    moves.insert(move);
+
+                    num_moved++;
                 }
-                hlt::Move move = {u, (unsigned char)pickMove(presentMap, nextMap, u, myId)};
-                nextMap.applyMove(move, myId);
-                moves.insert(move);
+
+                if( num_moved == 0 ) {
+                    break;
+                }
             }
 
             sendFrame(moves);
@@ -174,6 +175,24 @@ class MyBot
         }
 
         return 0;
+    }
+
+    int attack_util(hlt::Site src, hlt::Site dst) {
+        if( dst.owner == myId ) {
+            return 0;
+        }
+        else if( dst.strength >= src.strength ) {
+            return src.strength - dst.strength;
+        }
+        else {
+            return dst.production;
+        }
+    }
+
+    int move_cost(hlt::Site src, hlt::Site dst) {
+        int opportunity_cost = src.production + dst.production;
+        int overflow_cost = std::max(0, (src.strength + dst.strength) - 255);
+        return opportunity_cost + overflow_cost;
     }
 };
 

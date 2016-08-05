@@ -4,6 +4,7 @@
 #include "../src/Int2.hpp"
 #include "../src/Grid2.hpp"
 #include "../src/GridAlgos.hpp"
+#include "../src/Util.hpp"
 #include <queue>
 
 #include <cassert>
@@ -35,4 +36,41 @@ int main(void) {
 
     std::cout << "g contents: " << std::endl;
     g.writeCsv(std::cout);
+
+
+    // utils
+    int nums[] = {2, -1, 3, -2};
+
+    int act;
+
+    auto id = [] (int x) { return x; };
+    auto neg = [] (int x) { return -1 * x; };
+    auto myabs = [] (int x) { return (int)std::abs(x); };
+
+    act = minKey<int,int>(nums, 4, id);
+    assert(act == -2);
+
+    act = minKey<int,int>(nums, 4, neg);
+    assert(act == -3 );
+
+    act = minKey<int,int>(nums, 4, myabs);
+    assert(act == 1);
+
+    act = findMin<int,int>(nums, 4, id);
+    assert(act == 3);
+
+    act = findMin<int,int>(nums, 4, neg);
+    assert(act == 2 );
+
+    act = findMin<int,int>(nums, 4, myabs);
+    assert(act == 1);
+
+    act = findMax<int,int>(nums, 4, id);
+    assert(act == 2);
+
+    act = findMax<int,int>(nums, 4, neg);
+    assert(act == 3);
+
+    act = findMax<int,int>(nums, 4, myabs);
+    assert(act == 2);
 }

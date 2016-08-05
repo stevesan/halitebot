@@ -1,0 +1,39 @@
+
+new algo:
+    for (dist = 1; true; dist++ ) {
+        for each cell with dist:
+            move = still
+            if strength vs. production trade off is over threshold:
+                if dist == 1:
+                    move towards non-owned with highest attack_util
+                else:
+                    move towards owned with lowest move_cost
+            else:
+                move = still
+
+            update map strengths based on move:
+                if still:
+                    src.str += src.production
+                else:
+                    if(dest.owner != src.owner) {
+                        dest.str -= src.str
+                        if(dest.str <= 0) {
+                            dest.str = 0
+                            dest.owner = me
+                        }
+                    }
+                    else {
+                        dest.str = min(255, src.str + dest.str)
+                    }
+                    src.str = 0
+    }
+
+    attack_util(site)
+        return site.production
+
+    move_cost(u, v)
+        // this assumes you're moving because you want to go somewhere else, ie. v is not your final destination
+        // thus, the opp cost is v.prod as well
+        opportunityCost = u.prod + v.prod
+        overflowCost = max(0, (u.str + v.str) - 255)
+        return opportunityCost + overflowCost;

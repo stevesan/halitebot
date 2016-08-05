@@ -9,7 +9,7 @@ sp.check_call('make mine && make basic', shell=True)
 def runtest(testnum):
     botcmds = [
         "bin/MyBot dbg-%d.log" % testnum,
-        "bin/MyBotLastSub dbg-last-%d.log" % testnum
+        "bin/Best dbg-last-%d.log" % testnum
     ]
         
     shellcmd = 'tools/environment -d 20 20 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
