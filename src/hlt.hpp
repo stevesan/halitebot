@@ -86,6 +86,9 @@ namespace hlt{
 		}
 
 		Location getLocation(Location l, unsigned char direction) const {
+            l.x = l.x % width;
+            l.y = l.y % height;
+
 			if(direction != STILL) {
 				if(direction == NORTH) {
 					if(l.y == 0) l.y = height - 1;

@@ -67,29 +67,45 @@ class MyBot
 
     int pick_move( hlt::Location u )
     {
-        hlt::Site dests[5];
-       
-        for( int d : DIRECTIONS ) {
-            dests[d] = presentMap.getSite(u, d);
-        }
+        hlt::Site src = presentMap.getSite(u);
 
-        hlt::Site src = dests[STILL];
-
-        if( src.strength < 3*src.production ) {
+        if( src.strength < std::min(150, 3*src.production) ) {
             return STILL;
         }
 
         if( df.get(asInt2(u)) == 1 ) {
-            auto this_attack_util = [&] (hlt::Site dst) {
+            auto this_attack_util = [&] (int d) -> int {
+                assert (d != STILL);
+                auto dst = presentMap.getSite(u, d);
                 return attack_util(src, dst);
             };
-            return findMax<hlt::Site, int>(dests, 5, this_attack_util);
+            int d = CARDINALS[ findMax<int, int>(CARDINALS, 4, this_attack_util) ];
+
+            // confirm this is a good idea at all..
+            auto dest = presentMap.getSite(u,d);
+            if( dest.owner == myId || dest.strength >= src.strength ) {
+                // no good attack opp
+                return STILL;
+            }
+            else {
+                return d;
+            }
         }
         else {
-            auto this_move_cost = [&] (hlt::Site dst) {
-                return move_cost(src, dst);
+            auto this_move_cost = [&] (int d) -> int {
+                assert (d != STILL);
+                return move_cost(u, presentMap.getLocation(u,d));
             };
-            return findMin<hlt::Site, int>(dests, 5, this_move_cost);
+            int d = CARDINALS[ findMin<int, int>(CARDINALS, 4, this_move_cost) ];
+            // only move if it gets use closer
+
+            auto v = presentMap.getLocation(u,d);
+            if( df.get(asInt2(v)) < df.get(asInt2(u)) ) {
+                return d;
+            }
+            else {
+                return STILL;
+            }
         }
     }
 
@@ -144,10 +160,18 @@ class MyBot
         while(true) {
             getFrame(presentMap);
             updateDF(dfChanged);
+            assert(dfChanged.empty());
             moves.clear();
 
-            for( int phase_dist = 1; true; phase_dist++ ) {
-                int num_moved = 0;
+            // find the max distance
+            int maxDist = 0;
+            df.foreachValue([&](int d) {
+                    maxDist = std::max(d, maxDist);
+                    });
+            dbg << "begin frame " << frameCount << std::endl;
+
+
+            for( int phase_dist = 1; phase_dist <= maxDist; phase_dist++ ) {
 
                 FORMAP(presentMap, x, y) {
                     hlt::Location u = {x,y};
@@ -161,12 +185,6 @@ class MyBot
                     hlt::Move move = {u, (unsigned char)pick_move(u)};
                     apply_move(move);
                     moves.insert(move);
-
-                    num_moved++;
-                }
-
-                if( num_moved == 0 ) {
-                    break;
                 }
             }
 
@@ -189,7 +207,9 @@ class MyBot
         }
     }
 
-    int move_cost(hlt::Site src, hlt::Site dst) {
+    int move_cost(hlt::Location u, hlt::Location v) {
+        auto src = presentMap.getSite(u);
+        auto dst = presentMap.getSite(v);
         int opportunity_cost = src.production + dst.production;
         int overflow_cost = std::max(0, (src.strength + dst.strength) - 255);
         return opportunity_cost + overflow_cost;

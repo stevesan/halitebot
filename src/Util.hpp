@@ -5,7 +5,7 @@
 #include <cassert>
 
 template<typename E, typename K>
-K minKey(E* array, size_t count, std::function <K (E)> key)
+K minKey(const E* array, size_t count, std::function <K (E)> key)
 {
     assert(count > 0);
     K best = key(array[0]);
@@ -16,7 +16,7 @@ K minKey(E* array, size_t count, std::function <K (E)> key)
 }
 
 template<typename E, typename K>
-K maxKey(E* array, size_t count, std::function <K (E)> key)
+K maxKey(const E* array, size_t count, std::function <K (E)> key)
 {
     assert(count > 0);
     K best = key(array[0]);
@@ -27,7 +27,7 @@ K maxKey(E* array, size_t count, std::function <K (E)> key)
 }
 
 template<typename E, typename K>
-int findMin(E* array, size_t count, std::function <K (E)> key)
+int findMin(const E* array, size_t count, std::function <K (E)> key)
 {
     assert(count > 0);
     int bestIdx = 0;
@@ -43,7 +43,7 @@ int findMin(E* array, size_t count, std::function <K (E)> key)
 }
 
 template<typename E, typename K>
-int findMax(E* array, size_t count, std::function <K (E)> key)
+int findMax(const E* array, size_t count, std::function <K (E)> key)
 {
     assert(count > 0);
     int bestIdx = 0;

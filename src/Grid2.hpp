@@ -5,10 +5,12 @@
 #include "Int2.hpp"
 
 template <typename T> class Grid2 {
-    public:
+private:
 
     T* data;
     Int2 dims;
+
+public:
 
     Grid2( Int2 _dims ) : data(NULL)
     {
