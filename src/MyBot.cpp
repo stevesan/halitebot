@@ -99,8 +99,7 @@ class MyBot
 
         if( getDF(u) == 1 ) {
             auto this_attack_util = [&] (int d) -> int {
-                auto dst = presentMap.getSite(u, d);
-                return attack_util(src, dst);
+                return attack_util(src, getSite(u,d));
             };
             int d = CARDINALS[ findMax<int, int>(CARDINALS, 4, this_attack_util) ];
 
@@ -219,7 +218,8 @@ class MyBot
     }
 
     int attack_util(hlt::Site src, hlt::Site dst) {
-        if( dst.owner == myId ) {
+        if( dst.owner == myId || dst.strength >= src.strength ) {
+        //if( dst.owner == myId ) {
             return -9999;
         }
         else if( dst.strength >= src.strength ) {
