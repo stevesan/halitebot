@@ -11,8 +11,8 @@ def runtest(testnum):
     global bot1
     global bot2
     botcmds = [
-        "%s dbg-A-%d.log" % (bot1, testnum),
-        "%s dbg-B-%d.log" % (bot2, testnum),
+        "%s dbg-A-%d.log 2> A.err" % (bot1, testnum),
+        "%s dbg-B-%d.log 2> B.err" % (bot2, testnum),
     ]
         
     shellcmd = 'tools/environment -d 20 20 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
