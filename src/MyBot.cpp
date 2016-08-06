@@ -107,7 +107,7 @@ class MyBot
             // all the foreign tiles we're adjacent to got defeated. so, if this is the case,
             // don't do anything.
             // THIS STRENGTH CHECK IS REALLY IMPORTANT
-            if(getSite(u,d).owner == myId || getSite(u,d).strength > src.strength) {
+            if(getSite(u,d).owner == myId || getSite(u,d).strength >= src.strength) {
                 return STILL;
             }
             else {
@@ -223,9 +223,13 @@ class MyBot
             return -9999;
         }
         else if( dst.strength >= src.strength ) {
-            return src.strength - dst.strength;
+            // -1, since sometimes we get production == 0
+            // in that case, we'd still rather take the 0-prod site instead of
+            // an equal-strength site, since at least we can own the 0-prod
+            return src.strength - dst.strength - 1;
         }
         else {
+            assert (dst.production >= 0);
             return dst.production;
         }
     }
