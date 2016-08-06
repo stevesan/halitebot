@@ -222,12 +222,6 @@ class MyBot
         //if( dst.owner == myId ) {
             return -9999;
         }
-        else if( dst.strength >= src.strength ) {
-            // -1, since sometimes we get production == 0
-            // in that case, we'd still rather take the 0-prod site instead of
-            // an equal-strength site, since at least we can own the 0-prod
-            return src.strength - dst.strength - 1;
-        }
         else {
             assert (dst.production >= 0);
             return dst.production;

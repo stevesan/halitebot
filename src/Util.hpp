@@ -5,6 +5,34 @@
 #include <cassert>
 
 template<typename E, typename K>
+struct FindResult
+{
+    int index;
+    K key;
+    E value;
+};
+
+template<typename E, typename K>
+FindResult<K,E> getMin(const E* array, size_t count, std::function <K (E)> key)
+{
+    assert(count > 0);
+
+    int best = 0;
+    for( int i = 1; i < count; i++ ) {
+        if( key(array[i]) < key(array[best]) ) {
+            best = i;
+        }
+    }
+
+    FindResult<E,K> res;
+    res.index = best;
+    res.value = array[best];
+    res.key = key(array[best]);
+
+    return res;
+}
+
+template<typename E, typename K>
 K minKey(const E* array, size_t count, std::function <K (E)> key)
 {
     assert(count > 0);
