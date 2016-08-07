@@ -5,9 +5,58 @@
 #include "../src/Grid2.hpp"
 #include "../src/GridAlgos.hpp"
 #include "../src/Util.hpp"
+#include "../src/Range2.hpp"
 #include <queue>
+#include <set>
+#include <algorithm>
 
 #include <cassert>
+
+void testLambdaSort()
+{
+    std::vector<int> v;
+    v.push_back(3);
+    v.push_back(1);
+    v.push_back(2);
+
+    auto lt = [&] (int a, int b) -> bool { return a < b; };
+    std::sort( v.begin(), v.end(), lt );
+    assert( v[0] == 1 );
+    assert( v[1] == 2 );
+    assert( v[2] == 3 );
+}
+
+void testInt2()
+{
+    Int2 u(5,5);
+
+    std::set<Int2> nbors;
+    for(Int2 v : Nbors(u)) {
+        assert( nbors.find(v) == nbors.end() );
+        assert( v != u );
+        assert( u.taxiDist(v) == 1 );
+        nbors.insert(v);
+    }
+
+    assert(nbors.size() == 4);
+}
+
+void testRange()
+{
+    Range2 r1(Int2(0,0), Int2(2,1));
+
+    Int2 seq[] = { Int2(0,0), Int2(1,0) };
+    int seqnum = 0;
+    for(Int2 u : r1) {
+        assert (u == seq[seqnum]);
+        seqnum++;
+    }
+
+    Range2 r2(Int2(1, 2), Int2(3, 4));
+    int count = 0;
+    for(Int2 u : r2) { count++; }
+    assert( count == 4 );
+}
 
 int main(void) {
     Grid2<int> g(Int2(10,10));
@@ -73,4 +122,8 @@ int main(void) {
 
     act = findMax<int,int>(nums, 4, myabs);
     assert(act == 2);
+
+    testInt2();
+    testRange();
+    testLambdaSort();
 }

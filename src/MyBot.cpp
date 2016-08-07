@@ -7,6 +7,7 @@
 #include <fstream>
 #include <queue>
 #include <cassert>
+#include <algorithm>
 
 #include "hlt.hpp"
 #include "networking.hpp"
@@ -74,19 +75,60 @@ class MyBot
     void updateDF(std::queue<Int2>& dfChanged)
     {
         const int DIST_MAX = mapDims().sum();
-        // init distance field
-        assert( dfChanged.empty() );
-        df.foreachKey([&](Int2 u) {
-            if( getSite(u).owner != myId ) {
-                df.set(u, 0);
-                dfChanged.push(u);
-            }
-            else {
-                df.set(u, DIST_MAX);
-            }
-        });
+
+        for(Int2 u : df.indices()) {
+            df.set(u, DIST_MAX);
+        }
+
+        // a bit silly pattern..but..whatever
+        for( int i = 0; i < dfChanged.size(); i++ ) {
+            Int2 u = dfChanged.front();
+            dfChanged.pop();
+            df.set(u, 0);
+            dfChanged.push(u);
+        }
+
         updateDistanceField(df, dfChanged);
         assert( dfChanged.empty() );
+    }
+
+    void collectBestTargets(std::queue<Int2>& out) {
+        // set of all non-mine positions that are adjacent to one of mine
+        std::vector<Int2> targets;
+        for(Int2 u : df.indices()) {
+            if( getSite(u).owner != myId ) {
+                // adjacent to me?
+                for( Int2 v : Nbors(u) ) {
+                    if( getSite(v).owner == myId ) {
+                        // yes, add this!
+                        targets.push_back(u);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // TEMP TEMP
+        // ensure all unique
+        {
+            std::set<Int2> targetsSet;
+            for( Int2 u : targets ) {
+                assert( targetsSet.find(u) == targetsSet.end() );
+                targetsSet.insert(u);
+            }
+        }
+
+        // now sort by our utility and add the top x-percent to out
+        const int STR_PENALTY = 1;
+        auto util = [&] (Int2 u) { return getSite(u).production - getSite(u).strength*STR_PENALTY; };
+        auto util_lt = [&] (Int2 u, Int2 v) -> bool { return util(u) < util(v); };
+        std::sort(targets.begin(), targets.end(), util_lt);
+
+        // now sorted in ascending order - grab the top half
+        int first = targets.size() / 2;
+        for( int i = first; i < targets.size(); i++ ) {
+            out.push(targets[i]);
+        }
     }
 
     int pick_move( hlt::Location u )
@@ -109,18 +151,13 @@ class MyBot
             return d;
         }
         else {
-            //dbg << "begin findmin, u=" << u << std::endl;
             auto this_move_cost = [&] (int d) -> int {
-                //dbg << u << " -"<<d<<"> " << asInt2(u).nbor(d-1) << " df=" << getDF(u,d) << std::endl;
                 int cost = move_cost(u, presentMap.getLocation(u,d));
-                //dbg << "cost = " << cost << std::endl;
                 assert (cost >= 0);
                 return cost;
             };
             int d = CARDINALS[ findMin<int, int>(CARDINALS, 4, this_move_cost) ];
 
-            // we should be guaranteed to move closer to border
-            //dbg << getDF(u,d) << " " << getDF(u) << std::endl;
             assert( getDF(u,d) < getDF(u) );
             return d;
         }
@@ -178,15 +215,20 @@ class MyBot
 
         while(true) {
             getFrame(presentMap);
-            updateDF(dfChanged);
+
             assert(dfChanged.empty());
+            collectBestTargets(dfChanged);
+            updateDF(dfChanged);
+
             moves.clear();
 
             // find the max distance
-            int maxDist = 0;
-            df.foreachValue([&](int d) {
-                    maxDist = std::max(d, maxDist);
-                    });
+            unsigned int maxDist = 0;
+            for( Int2 u : df.indices() ) {
+                if( getSite(u).owner == myId ) {
+                    maxDist = std::max( df.get(u), maxDist );
+                }
+            }
 
             for( int phase_dist = 1; phase_dist <= maxDist; phase_dist++ ) {
 
@@ -196,7 +238,10 @@ class MyBot
                     if( getDF(u) != phase_dist ) {
                         continue;
                     }
-                    assert(getSite(u).owner == myId);
+
+                    if( getSite(u).owner != myId ) {
+                        continue;
+                    }
 
                     hlt::Move move = {u, (unsigned char)pick_move(u)};
                     apply_move(move);
@@ -225,7 +270,6 @@ class MyBot
     int move_cost(hlt::Location u, hlt::Location v) {
         // always prefer the ones closer to the border
         // so assign very high cost to any distance away from border
-        //dbg << "v=" << v << " df=" << getDF(v) << std::endl;
         int border_cost = getDF(v) * 1000;
 
         auto src = presentMap.getSite(u);

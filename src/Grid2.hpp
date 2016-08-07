@@ -3,6 +3,7 @@
 #define GRID2_HPP_INC
 
 #include "Int2.hpp"
+#include "Range2.hpp"
 
 template <typename T> class Grid2 {
 private:
@@ -81,6 +82,10 @@ public:
 
     int width() const { return dims.x; }
     int height() const { return dims.y; }
+
+    Range2 indices() const {
+        return Range2(Int2(0,0), dims);
+    }
 };
 
 

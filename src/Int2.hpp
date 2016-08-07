@@ -35,11 +35,36 @@ class Int2 {
         return Int2( x - other.x, y - other.y );
     }
 
+    Int2 operator=(Int2 other) {
+        x = other.x;
+        y = other.y;
+        return *this;
+    }
+
     bool operator==(Int2 other) const {
         return x == other.x && y == other.y;
     }
 
+    bool operator!=(Int2 other) const {
+        return !operator==(other);
+    }
+
+    // y first. To stay consistent with X-major range-iteration order.
+    bool operator<(Int2 other) const {
+        if( y > other.y ) {
+            return false;
+        }
+        else if( y == other.y ) {
+            return x < other.x;
+        }
+        else {
+            return true;
+        };
+    }
+
     // NOTE NOTE NOTE: This is flipped Y...so NORTH actually results in y-1
+    // Also..note that you should pass in NORTH-1 for NORTH, etc.
+    // Yeh...really not happen with this.
     Int2 nbor(int d) const {
         assert( d >= 0 && d < 4 );
         static Int2 norms[4] = {Int2(0,-1), Int2(1,0), Int2(0,1), Int2(-1,0)};
@@ -66,6 +91,50 @@ class Int2 {
         }
     }
 
+    int taxiDist(Int2 to) const {
+        return std::abs(to.x - x) + std::abs(to.y - y);
+    }
+};
+
+class NborsIter {
+    int nborNum;
+    Int2 u;
+
+    public:
+
+    NborsIter(Int2 _u, int _nborNum) :
+        u(_u),
+        nborNum(_nborNum)
+    {
+    }
+
+    bool operator!=(NborsIter other) const {
+        return nborNum != other.nborNum;
+    }
+
+    Int2 operator*() const { return u.nbor(nborNum); }
+
+    NborsIter operator++() {
+        nborNum++;
+        return *this;
+    }
+};
+
+// For iterating
+class Nbors {
+    Int2 u;
+
+    public:
+
+    Nbors(Int2 _u) : u(_u) {}
+
+    NborsIter begin() {
+        return NborsIter(u,0);
+    }
+
+    NborsIter end() {
+        return NborsIter(u,4);
+    }
 };
 
 #endif
