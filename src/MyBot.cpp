@@ -99,20 +99,14 @@ class MyBot
 
         if( getDF(u) == 1 ) {
             auto this_attack_util = [&] (int d) -> int {
+                if( d == STILL ) {
+                    // hacky. dependent on attack_util's constant
+                    return -1;
+                }
                 return attack_util(src, getSite(u,d));
             };
-            int d = CARDINALS[ findMax<int, int>(CARDINALS, 4, this_attack_util) ];
-
-            // it's actually possible that during the course of the frame,
-            // all the foreign tiles we're adjacent to got defeated. so, if this is the case,
-            // don't do anything.
-            // THIS STRENGTH CHECK IS REALLY IMPORTANT
-            if(getSite(u,d).owner == myId || getSite(u,d).strength >= src.strength) {
-                return STILL;
-            }
-            else {
-                return d;
-            }
+            int d = DIRECTIONS[ findMax<int, int>(DIRECTIONS, 5, this_attack_util) ];
+            return d;
         }
         else {
             //dbg << "begin findmin, u=" << u << std::endl;
@@ -218,8 +212,8 @@ class MyBot
     }
 
     int attack_util(hlt::Site src, hlt::Site dst) {
+        // THIS STRENGTH CHECK IS REALLY IMPORTANT
         if( dst.owner == myId || dst.strength >= src.strength ) {
-        //if( dst.owner == myId ) {
             return -9999;
         }
         else {
