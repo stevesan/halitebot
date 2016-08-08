@@ -110,6 +110,7 @@ class MyBot
 
         // TEMP TEMP
         // ensure all unique
+        /*
         {
             std::set<Int2> targetsSet;
             for( Int2 u : targets ) {
@@ -117,15 +118,19 @@ class MyBot
                 targetsSet.insert(u);
             }
         }
+        */
 
         // now sort by our utility and add the top x-percent to out
-        const int STR_PENALTY = 1;
-        auto util = [&] (Int2 u) { return getSite(u).production - getSite(u).strength*STR_PENALTY; };
+        const float STR_PENALTY = 1.0;
+        auto util = [&] (Int2 u) {
+            return getSite(u).production - getSite(u).strength*STR_PENALTY; };
         auto util_lt = [&] (Int2 u, Int2 v) -> bool { return util(u) < util(v); };
         std::sort(targets.begin(), targets.end(), util_lt);
 
         // now sorted in ascending order - grab the top half
-        int first = targets.size() / 2;
+        // 2/3 was bad here..
+        // 1/3 was about as good as 1/2
+        int first = targets.size() * 1 / 2;
         for( int i = first; i < targets.size(); i++ ) {
             out.push(targets[i]);
         }
@@ -140,25 +145,45 @@ class MyBot
         }
 
         if( getDF(u) == 1 ) {
-            auto this_attack_util = [&] (int d) -> int {
+            auto attack_util = [&] (int d) -> int {
+                auto dst = getSite(u,d);
+                auto src = getSite(u);
+
                 if( d == STILL ) {
-                    // hacky. dependent on attack_util's constant
-                    return -1;
+                    // make this default
+                    return 0;
                 }
-                return attack_util(src, getSite(u,d));
+                if( getDF(u,d) != 0 ) {
+                    // not a high priority target
+                    return -9999;
+                }
+                if( dst.owner == myId ) {
+                    return -9999;
+                }
+                // THIS STRENGTH CHECK IS REALLY IMPORTANT
+                if(dst.strength >= src.strength ) {
+                    return -9999;
+                }
+
+                assert (dst.production >= 0);
+                // add 1 to put this above STILL
+                return dst.production + 1;
             };
-            int d = DIRECTIONS[ findMax<int, int>(DIRECTIONS, 5, this_attack_util) ];
+            int d = DIRECTIONS[ findMax<int, int>(DIRECTIONS, 5, attack_util) ];
             return d;
         }
         else {
             auto this_move_cost = [&] (int d) -> int {
+                if( d == STILL ) {
+                    return 100000;
+                }
                 int cost = move_cost(u, presentMap.getLocation(u,d));
                 assert (cost >= 0);
                 return cost;
             };
-            int d = CARDINALS[ findMin<int, int>(CARDINALS, 4, this_move_cost) ];
+            int d = DIRECTIONS[ findMin<int, int>(DIRECTIONS, 5, this_move_cost) ];
 
-            assert( getDF(u,d) < getDF(u) );
+            //assert( getDF(u,d) < getDF(u) );
             return d;
         }
 
@@ -256,18 +281,11 @@ class MyBot
         return 0;
     }
 
-    int attack_util(hlt::Site src, hlt::Site dst) {
-        // THIS STRENGTH CHECK IS REALLY IMPORTANT
-        if( dst.owner == myId || dst.strength >= src.strength ) {
-            return -9999;
-        }
-        else {
-            assert (dst.production >= 0);
-            return dst.production;
-        }
-    }
-
     int move_cost(hlt::Location u, hlt::Location v) {
+        if( getSite(v).owner != myId ) {
+            // do not move to non-owned - that is related to attacking!
+            return 1000000;
+        }
         // always prefer the ones closer to the border
         // so assign very high cost to any distance away from border
         int border_cost = getDF(v) * 1000;
