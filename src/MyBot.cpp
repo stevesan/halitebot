@@ -59,6 +59,10 @@ class MyBot
         return Int2((int)u.x, (int)u.y);
     }
 
+    Range2 mapRange() {
+        return df.indices();
+    }
+
     int getDF(Int2 u) { return df.get(u); }
     int getDF(Int2 u, int dir) {
         assert(dir >= 1 && dir <= 4);
@@ -121,7 +125,7 @@ class MyBot
         */
 
         // now sort by our utility and add the top x-percent to out
-        const float STR_PENALTY = 1.0;
+        const float STR_PENALTY = 0.1;
         auto util = [&] (Int2 u) {
             return getSite(u).production - getSite(u).strength*STR_PENALTY; };
         auto util_lt = [&] (Int2 u, Int2 v) -> bool { return util(u) < util(v); };
@@ -130,7 +134,8 @@ class MyBot
         // now sorted in ascending order - grab the top half
         // 2/3 was bad here..
         // 1/3 was about as good as 1/2
-        int first = targets.size() * 1 / 2;
+        //int first = targets.size() * 2 / 3;
+        int first = targets.size() * 2 / 3;
         for( int i = first; i < targets.size(); i++ ) {
             out.push(targets[i]);
         }

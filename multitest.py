@@ -15,7 +15,7 @@ def runtest(testnum):
         "%s dbg-B-%d.log 2> B.err" % (bot2, testnum),
     ]
         
-    shellcmd = 'tools/environment -d 20 20 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
+    shellcmd = 'tools/environment -d 25 25 ' + ' '.join(['"%s"' % cmd for cmd in botcmds]) + ' | grep rank'
     # print shellcmd
     out = sp.check_output(shellcmd, shell=True)
     won = False
