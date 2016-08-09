@@ -1,6 +1,7 @@
 #ifndef HLT_H
 #define HLT_H
 
+#include <set>
 #include <list>
 #include <vector>
 #include <random>

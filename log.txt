@@ -1,4 +1,31 @@
 
+TODO: implement the "min steps to capture" in an isolated way
+
+QUESTION:
+
+    borders = all touching neutral cells
+    compute util for all borders
+    borders_with_dirty_steps = all borders
+
+    while !borders.empty:
+        for u in borders_with_dirty_steps:
+            recompute steps_to_capture(u)
+
+        find border with max util/steps, u
+        do u's steps
+        for each site s used for u,
+            see what other borders used s, add them to borders_with_dirty_steps
+
+    ----
+
+    subfuncs:
+        steps_to_capture
+            bfs, with "leaf-only move" logic
+
+    structures needed:
+        map from my sites -> [used:boolean, set<Int2> usingBorders]
+        map from border to -> [util, steps]
+
 new algo:
     for (dist = 1; true; dist++ ) {
         for each cell with dist:

@@ -3,6 +3,7 @@
 #define INT2_HPP_INC
 
 #include <cassert>
+#include <functional>
 
 static int safemod(int p, int q) {
     while(p < 0) p += q;
@@ -95,6 +96,19 @@ class Int2 {
         return std::abs(to.x - x) + std::abs(to.y - y);
     }
 };
+
+namespace std {
+    template<> struct hash<Int2>
+    {
+        size_t operator()(const Int2& u) const
+        {
+            size_t hash = 23;
+            hash = hash*31 + u.x;
+            hash = hash*31 + u.y;
+            return hash;
+        }
+    };
+}
 
 class NborsIter {
     int nborNum;

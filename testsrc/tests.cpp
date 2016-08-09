@@ -5,12 +5,65 @@
 #include "../src/Grid2.hpp"
 #include "../src/GridAlgos.hpp"
 #include "../src/Util.hpp"
+#include "../src/hlt.hpp"
 #include "../src/Range2.hpp"
+#include "../src/Capture.hpp"
 #include <queue>
 #include <set>
 #include <algorithm>
 
 #include <cassert>
+#include <unordered_map>
+
+struct TestMap
+{
+    public:
+
+        Grid2<hlt::PlayerId> owner;
+        Grid2<unsigned char> str;
+        Grid2<unsigned char> prod;
+
+        hlt::Site getSite(Int2 u) {
+            return hlt::Site({ owner.get(u), str.get(u), prod.get(u)});
+        }
+
+        bool isOwned(Int2 u) {
+            return owner.get(u) == 1;
+        }
+};
+
+void testCapture()
+{
+}
+
+void testMaps() 
+{
+    std::unordered_map<Int2, int> m;
+    m[Int2(0,0)] = 123;
+    m[Int2(0,1)] = 456;
+    assert( m[Int2(0,0)] == 123 );
+    assert( m[Int2(0,1)] == 456 );
+
+    std::unordered_map<Int2, std::set<Int2> > m2;
+    Int2 u(12, 34);
+    m2[u].insert( Int2(5,5) );
+    m2[u].insert( Int2(6,6) );
+    m2[u].insert( Int2(7,7) );
+    assert( m2[u].size() == 3 );
+    int sum = 0;
+    for( Int2 v : m2[u] ) {
+        sum += v.sum();
+    }
+    assert(sum == 10 + 12 + 14);
+
+    m2[u].erase( Int2(5,5) );
+    assert( m2[u].size() == 2 );
+    sum = 0;
+    for( Int2 v : m2[u] ) {
+        sum += v.sum();
+    }
+    assert(sum == 12 + 14);
+}
 
 void testLambdaSort()
 {
@@ -86,7 +139,6 @@ int main(void) {
     std::cout << "g contents: " << std::endl;
     g.writeCsv(std::cout);
 
-
     // utils
     int nums[] = {2, -1, 3, -2};
 
@@ -126,4 +178,6 @@ int main(void) {
     testInt2();
     testRange();
     testLambdaSort();
+    testMaps();
+    testCapture();
 }

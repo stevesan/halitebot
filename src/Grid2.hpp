@@ -4,31 +4,47 @@
 
 #include "Int2.hpp"
 #include "Range2.hpp"
+#include <vector>
 
 template <typename T> class Grid2 {
 private:
 
-    T* data;
+    std::vector<T> data;
     Int2 dims;
 
 public:
 
-    Grid2( Int2 _dims ) : data(NULL)
+    Grid2( int width, std::vector<T> values )
     {
-        reset(_dims);
+        assert(values.size() % width == 0);
+        int height = values.size() / width;
+        dims = Int2(width, height);
+        data = values;
     }
 
-    Grid2() : data(NULL)
+    Grid2( Int2 _dims )
+    {
+        resize(_dims);
+    }
+
+    Grid2()
     {
     }
 
-    virtual ~Grid2() {
-        delete data;
-    }
-
-    void reset(Int2 _dims) {
+    void resize(Int2 _dims) {
         dims = _dims;
-        data = new T[dims.product()];
+        data.resize( dims.product() );
+    }
+
+    void set_all(T val) {
+        for( Int2 u : indices() ) {
+            set(u, val);
+        }
+    }
+
+    void set(std::vector<T> values) {
+        assert(values.size() == dims.product());
+        data = values;
     }
 
     T get(Int2 u) const {
