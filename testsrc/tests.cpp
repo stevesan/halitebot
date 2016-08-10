@@ -79,9 +79,26 @@ public:
 
     bool run_test(char target_label, CapturePlan& plan) {
         Int2 target = find_label(target_label);
-        bool ok = compute_capture_plan(*this, target, plan);
+        bool possible = compute_capture_plan(*this, target, plan);
         output_plan(std::cout, target, plan);
-        return ok;
+        hlt::MoveSet moves;
+        output_moves(plan, target, size(), moves);
+        assert(moves.size() == plan.positions.size());
+
+        // number of non-stills should not exceed last wave size
+        int num_advances = 0;
+        for( auto move : moves ) {
+            if( move.dir != STILL) {
+                num_advances++;
+            }
+        }
+        if( plan.last_wave_produces ) {
+            assert(num_advances == 0);
+        }
+        else {
+            assert(num_advances == plan.last_wave.size());
+        }
+        return possible;
     }
 };
 
@@ -303,7 +320,7 @@ void testCaptureMultiChain2()
             });
 
     map.str.reset(S, {
-            0, 0, 4, 0, 0,
+            0, 0, 3, 0, 0,
             1, 0, 1, 0, 1,
             4, 1, 9, 0, 1,
             1, 0, 0, 0, 1,
