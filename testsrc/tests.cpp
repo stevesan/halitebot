@@ -45,12 +45,16 @@ public:
         return owner.get(u) == 1;
     }
 
-    void output_plan( std::ostream& os, const CapturePlan& plan ) {
+    void output_plan( std::ostream& os, Int2 target, const CapturePlan& plan ) {
+        os << "target = " << labels.get(target) << ", s/p = " << str.get(target) << "/" << prod.get(target) << std::endl;
         os << plan.turns << " turns. Positions used:" << std::endl;
         for(int y : str.yy()) {
             for(int x : str.xx()) {
                 Int2 u = Int2(x,y);
-                if( plan.positions.find(u) != plan.positions.end() ) {
+                if( u == target ) {
+                    os << str.get(u) << "*";
+                }
+                else if( plan.positions.find(u) != plan.positions.end() ) {
                     os << str.get(u) << prod.get(u);
                 }
                 else {
@@ -63,9 +67,25 @@ public:
     }
 
     Int2 size() const { return str.size(); }
+
+    Int2 find_label(char q) {
+        for( Int2 u : labels.indices() ) {
+            if( labels.get(u) == q ) {
+                return u;
+            }
+        }
+        return Int2(0,0);
+    }
+
+    bool run_test(char target_label, CapturePlan& plan) {
+        Int2 target = find_label(target_label);
+        bool ok = compute_capture_plan(*this, target, plan);
+        output_plan(std::cout, target, plan);
+        return ok;
+    }
 };
 
-void testCapture()
+void testCapture0()
 {
     const int S = 5;
 
@@ -77,13 +97,6 @@ void testCapture()
             'K', 'L', 'M', 'N', 'O',
             'P', 'Q', 'R', 'S', 'T',
             'U', 'V', 'W', 'X', 'Y'});
-
-    for( int y = 0; y < S; y++ ) {
-        for( int x = 0; x < S; x++ ) {
-            std::cout << map.labels.get(Int2(x,y)) << "  ";
-        }
-        std::cout << std::endl;
-    }
 
     map.owner.reset(S, {
             0, 0, 0, 0, 0,
@@ -112,33 +125,208 @@ void testCapture()
     CapturePlan plan;
     bool ok;
 
-    auto run_test = [&] (char target_label) {
-        Int2 target;
-        for( Int2 u : map.labels.indices() ) {
-            if( map.labels.get(u) == target_label ) {
-                target = u;
-                break;
-            }
-        }
-        ok = compute_capture_plan(map, target, plan);
-        std::cout << "*** target = " << target_label << ", str = " << map.str.get(target) << std::endl;
-        map.output_plan(std::cout, plan);
-    };
-
-    run_test('C');
+    ok = map.run_test('C', plan);
     assert(ok);
     assert(plan.turns == 3);
     assert(plan.positions.size() == 2);
 
     // impossible
-    run_test('O');
+    ok = map.run_test('O', plan);
     assert(!ok);
 
-    run_test('Q');
+    ok = map.run_test('Q', plan);
     assert(ok);
     assert(plan.turns == 1);
     assert(plan.positions.size() == 2);
 
+}
+
+void testCapture1()
+{
+    const int S = 5;
+
+    TestMap map;
+
+    map.labels.reset(S, {
+            'A', 'B', 'C', 'D', 'E',
+            'F', 'G', 'H', 'I', 'J',
+            'K', 'L', 'M', 'N', 'O',
+            'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y'});
+
+    map.owner.reset(S, {
+            0, 0, 1, 0, 0,
+            0, 1, 1, 1, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    map.str.reset(S, {
+            0, 0, 2, 0, 0,
+            0, 2, 2, 1, 0,
+            0, 0, 5, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    map.prod.reset(S, {
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    CapturePlan plan;
+    bool ok;
+
+    ok = map.run_test('M', plan);
+    assert(ok);
+    assert(plan.turns == 2);
+    assert(plan.positions.size() == 3);
+}
+
+void testCaptureWrap()
+{
+    const int S = 5;
+
+    TestMap map;
+
+    map.labels.reset(S, {
+            'A', 'B', 'C', 'D', 'E',
+            'F', 'G', 'H', 'I', 'J',
+            'K', 'L', 'M', 'N', 'O',
+            'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y'});
+
+    map.owner.reset(S, {
+            1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0,
+            0, 1, 0, 0, 1
+            });
+
+    map.str.reset(S, {
+            2, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0,
+            5, 2, 0, 0, 2
+            });
+
+    map.prod.reset(S, {
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    CapturePlan plan;
+    bool ok;
+
+    ok = map.run_test('U', plan);
+    assert(ok);
+    assert(plan.turns == 1);
+    assert(plan.positions.size() == 3);
+}
+
+void testCaptureMultiChain()
+{
+    const int S = 5;
+
+    TestMap map;
+
+    map.labels.reset(S, {
+            'A', 'B', 'C', 'D', 'E',
+            'F', 'G', 'H', 'I', 'J',
+            'K', 'L', 'M', 'N', 'O',
+            'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y'});
+
+    map.owner.reset(S, {
+            0, 0, 1, 0, 0,
+            1, 0, 1, 0, 1,
+            1, 1, 0, 1, 1,
+            1, 0, 1, 0, 1,
+            0, 0, 1, 0, 0
+            });
+
+    map.str.reset(S, {
+            0, 0, 1, 0, 0,
+            1, 0, 1, 0, 1,
+            1, 1, 9, 0, 1,
+            1, 0, 0, 0, 1,
+            0, 0, 1, 0, 0
+            });
+
+    map.prod.reset(S, {
+            0, 0, 2, 0, 0,
+            0, 0, 0, 0, 0,
+            2, 0, 0, 1, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    CapturePlan plan;
+    bool ok;
+
+    ok = map.run_test('M', plan);
+    assert(ok);
+    assert(plan.turns == 3);
+    assert(plan.positions.size() == 6);
+    assert(plan.last_wave.size() == 2);
+    assert(plan.last_wave_produces);
+}
+
+void testCaptureMultiChain2()
+{
+    const int S = 5;
+
+    TestMap map;
+
+    map.labels.reset(S, {
+            'A', 'B', 'C', 'D', 'E',
+            'F', 'G', 'H', 'I', 'J',
+            'K', 'L', 'M', 'N', 'O',
+            'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y'});
+
+    map.owner.reset(S, {
+            0, 0, 1, 0, 0,
+            1, 0, 1, 0, 1,
+            1, 1, 0, 1, 1,
+            1, 0, 1, 0, 1,
+            0, 0, 1, 0, 0
+            });
+
+    map.str.reset(S, {
+            0, 0, 4, 0, 0,
+            1, 0, 1, 0, 1,
+            4, 1, 9, 0, 1,
+            1, 0, 0, 0, 1,
+            0, 0, 1, 0, 0
+            });
+
+    map.prod.reset(S, {
+            0, 0, 2, 0, 0,
+            0, 0, 0, 0, 0,
+            2, 0, 0, 1, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    CapturePlan plan;
+    bool ok;
+
+    ok = map.run_test('M', plan);
+    assert(ok);
+    assert(plan.turns == 2);
+    assert(plan.positions.size() == 6);
+    assert(plan.last_wave.size() == 2);
+    assert(!plan.last_wave_produces);
 }
 
 void testMaps() 
@@ -304,5 +492,9 @@ int main(void) {
     testRange2();
     testLambdaSort();
     testMaps();
-    testCapture();
+    testCapture0();
+    testCapture1();
+    testCaptureWrap();
+    testCaptureMultiChain();
+    testCaptureMultiChain2();
 }
