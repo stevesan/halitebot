@@ -86,4 +86,29 @@ int findMax(const E* array, size_t count, std::function <K (E)> key)
     return bestIdx;
 }
 
+class IntIter
+{
+    int i;
+    public:
+    IntIter(int _i) : i(_i) {}
+
+    bool operator!=(IntIter other) const { return i != other.i; }
+    int operator*() const { return i; }
+    IntIter operator++() { i++; return *this; }
+};
+
+class Range {
+    int a, b;
+
+    public:
+
+    Range(int _a, int _b) : a(_a), b(_b) { }
+
+    Range(int _b) : a(0), b(_b) { }
+
+    IntIter begin() { return IntIter(a); }
+    IntIter end() { return IntIter(b); }
+};
+
+
 #endif

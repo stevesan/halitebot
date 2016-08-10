@@ -21,11 +21,6 @@ typedef int utility;
 
 std::string DIR2STR[] = { "Still", "North", "East", "South", "West" };
 
-static std::ostream& operator<<( std::ostream& os, Int2 u ) {
-    os << u.x << "," << u.y;
-    return os;
-}
-
 static std::ostream& operator<<( std::ostream& os, hlt::Location u ) {
     os << u.x << "," << u.y;
     return os;
@@ -238,7 +233,7 @@ class MyBot
         sendInit("TheDarkness");
 
         hlt::MoveSet moves;
-        df.reset(mapDims());
+        df.resize(mapDims());
 
         int frameCount = 0;
         std::queue<Int2> dfChanged;

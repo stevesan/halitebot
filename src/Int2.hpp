@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <functional>
+#include <iostream>
 
 static int safemod(int p, int q) {
     while(p < 0) p += q;
@@ -150,5 +151,11 @@ class Nbors {
         return NborsIter(u,4);
     }
 };
+
+std::ostream& operator<<( std::ostream& os, Int2 u ) {
+    os << "Int2(" << u.x << "," << u.y << ")";
+    return os;
+}
+
 
 #endif

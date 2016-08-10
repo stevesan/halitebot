@@ -1,5 +1,9 @@
 
+TODO: check for all cases where we may be relying on ==.. but due to wrapping algebra, we may be wrong
 TODO: implement the "min steps to capture" in an isolated way
+
+TODO: test case where...you just wait for the last wave to produce, then bring in.
+    so it takes 1 more step, but nkjjjjjjjjk
 
 QUESTION:
 

@@ -15,25 +15,130 @@
 #include <cassert>
 #include <unordered_map>
 
+template< typename T >
+std::ostream& operator<<( std::ostream& os, std::set<T> S ) {
+    os << "{";
+    for( T e : S ) {
+        os << e << ",";
+    }
+    os << "}";
+    return os;
+}
+
+
 struct TestMap
 {
-    public:
+public:
 
-        Grid2<hlt::PlayerId> owner;
-        Grid2<unsigned char> str;
-        Grid2<unsigned char> prod;
+    Grid2<hlt::PlayerId> owner;
+    Grid2<int> str;
+    Grid2<int> prod;
+    Grid2<char> labels;
 
-        hlt::Site getSite(Int2 u) {
-            return hlt::Site({ owner.get(u), str.get(u), prod.get(u)});
+    hlt::Site getSite(Int2 u) const {
+        return hlt::Site({ owner.get(u),
+                (unsigned char)str.get(u),
+                (unsigned char)prod.get(u)});
+    }
+
+    bool isOwned(Int2 u) const {
+        return owner.get(u) == 1;
+    }
+
+    void output_plan( std::ostream& os, const CapturePlan& plan ) {
+        os << plan.turns << " turns. Positions used:" << std::endl;
+        for(int y : str.yy()) {
+            for(int x : str.xx()) {
+                Int2 u = Int2(x,y);
+                if( plan.positions.find(u) != plan.positions.end() ) {
+                    os << str.get(u) << prod.get(u);
+                }
+                else {
+                    os << "..";
+                }
+                os << " ";
+            }
+            os << std::endl;
         }
+    }
 
-        bool isOwned(Int2 u) {
-            return owner.get(u) == 1;
-        }
+    Int2 size() const { return str.size(); }
 };
 
 void testCapture()
 {
+    const int S = 5;
+
+    TestMap map;
+
+    map.labels.reset(S, {
+            'A', 'B', 'C', 'D', 'E',
+            'F', 'G', 'H', 'I', 'J',
+            'K', 'L', 'M', 'N', 'O',
+            'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y'});
+
+    for( int y = 0; y < S; y++ ) {
+        for( int x = 0; x < S; x++ ) {
+            std::cout << map.labels.get(Int2(x,y)) << "  ";
+        }
+        std::cout << std::endl;
+    }
+
+    map.owner.reset(S, {
+            0, 0, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, 1, 1, 1, 0,
+            0, 0, 1, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    map.str.reset(S, {
+            0, 0, 5, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 2, 0, 0, 999,
+            0, 2, 1, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    map.prod.reset(S, {
+            0, 0, 0, 0, 0,
+            0, 0, 2, 0, 0,
+            0, 2, 2, 2, 0,
+            0, 0, 2, 0, 0,
+            0, 0, 0, 0, 0
+            });
+
+    CapturePlan plan;
+    bool ok;
+
+    auto run_test = [&] (char target_label) {
+        Int2 target;
+        for( Int2 u : map.labels.indices() ) {
+            if( map.labels.get(u) == target_label ) {
+                target = u;
+                break;
+            }
+        }
+        ok = compute_capture_plan(map, target, plan);
+        std::cout << "*** target = " << target_label << ", str = " << map.str.get(target) << std::endl;
+        map.output_plan(std::cout, plan);
+    };
+
+    run_test('C');
+    assert(ok);
+    assert(plan.turns == 3);
+    assert(plan.positions.size() == 2);
+
+    // impossible
+    run_test('O');
+    assert(!ok);
+
+    run_test('Q');
+    assert(ok);
+    assert(plan.turns == 1);
+    assert(plan.positions.size() == 2);
+
 }
 
 void testMaps() 
@@ -94,7 +199,7 @@ void testInt2()
     assert(nbors.size() == 4);
 }
 
-void testRange()
+void testRange2()
 {
     Range2 r1(Int2(0,0), Int2(2,1));
 
@@ -109,6 +214,25 @@ void testRange()
     int count = 0;
     for(Int2 u : r2) { count++; }
     assert( count == 4 );
+}
+
+void testIntRange() {
+    int count = 0;
+    for( int i : Range(5) ) {
+        assert(i >= 0);
+        assert(i < 5);
+        count++;
+    }
+
+    assert(count == 5);
+
+    count = 0;
+    for( int i : Range(10,15) ) {
+        assert(i >= 10);
+        assert(i < 15);
+        count++;
+    }
+    assert(count == 5);
 }
 
 int main(void) {
@@ -176,7 +300,8 @@ int main(void) {
     assert(act == 2);
 
     testInt2();
-    testRange();
+    testIntRange();
+    testRange2();
     testLambdaSort();
     testMaps();
     testCapture();

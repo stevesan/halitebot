@@ -4,6 +4,7 @@
 
 #include "Int2.hpp"
 #include "Range2.hpp"
+#include "Util.hpp"
 #include <vector>
 
 template <typename T> class Grid2 {
@@ -16,10 +17,7 @@ public:
 
     Grid2( int width, std::vector<T> values )
     {
-        assert(values.size() % width == 0);
-        int height = values.size() / width;
-        dims = Int2(width, height);
-        data = values;
+        reset(width, values);
     }
 
     Grid2( Int2 _dims )
@@ -42,8 +40,10 @@ public:
         }
     }
 
-    void set(std::vector<T> values) {
-        assert(values.size() == dims.product());
+    void reset(int width, std::vector<T> values) {
+        assert(values.size() % width == 0);
+        int height = values.size() / width;
+        dims = Int2(width, height);
         data = values;
     }
 
@@ -98,6 +98,10 @@ public:
 
     int width() const { return dims.x; }
     int height() const { return dims.y; }
+    Int2 size() const { return dims; }
+
+    Range yy() const { return Range(dims.y); }
+    Range xx() const { return Range(dims.x); }
 
     Range2 indices() const {
         return Range2(Int2(0,0), dims);
