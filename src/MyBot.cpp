@@ -70,6 +70,7 @@ class MyBot
 
     bool usable_for_capture(Int2 u) const {
         return getSite(u).owner == myId
+            && getSite(u).strength >= std::min(200, 3*getSite(u).production)
             // if we moved a cell already this frame, we must've used it to capture something else
             && moved_cells.find(u) == moved_cells.end();
     }
@@ -272,7 +273,7 @@ class MyBot
         std::vector<Int2> my_cells;
 
         while(true) {
-            dbg << "frame " << frameCount << std::endl;
+            //dbg << "frame " << frameCount << std::endl;
             getFrame(presentMap);
             moves.clear();
             moved_cells.clear();
@@ -302,7 +303,7 @@ class MyBot
             }
 
 
-            dbg << "found " << targets.size() << " on border, first: " << *targets.begin() << std::endl;
+            //dbg << "found " << targets.size() << " on border, first: " << *targets.begin() << std::endl;
 
             //----------------------------------------
             //  Compute utils, allocate plans
@@ -325,6 +326,8 @@ class MyBot
                 need_replan.insert(t);
             }
 
+            int max_captures = targets.size();
+            int num_captures = 0;
             while(true) {
                 //----------------------------------------
                 //  Update plans that need updating
@@ -361,8 +364,13 @@ class MyBot
                     }
                 }
 
-                dbg << "capturing target " << best_target << std::endl;
+                //dbg << "capturing target " << best_target << std::endl;
                 output_moves( plans[best_target], best_target, size(), moves );
+                num_captures++;
+
+                if( num_captures >= max_captures ) {
+                    break;
+                }
 
                 // update some state
                 can_capture.erase(best_target);
@@ -412,10 +420,10 @@ class MyBot
             //----------------------------------------
             //  Send moves
             //----------------------------------------
-            dbg << "FINAL MOVES: " << std::endl;
-            for(auto move : moves) {
-                dbg << asInt2(move.loc) << " " << DIR2STR[move.dir] << std::endl;
-            }
+            //dbg << "FINAL MOVES: " << std::endl;
+            //for(auto move : moves) {
+                //dbg << asInt2(move.loc) << " " << DIR2STR[move.dir] << std::endl;
+            //}
             sendFrame(moves);
 
             frameCount++;
