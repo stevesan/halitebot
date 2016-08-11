@@ -245,7 +245,7 @@ class MyBot
     }
 
     float compute_target_util(Int2 u) {
-        return getSite(u).production * 1.0;
+        return getSite(u).production - 0.0*getSite(u).strength;
     }
 
     int main(int argc, char** argv) {
@@ -281,6 +281,7 @@ class MyBot
             //  Find targets
             //----------------------------------------
             std::set<Int2> targets;
+            my_cells.clear();
             for(Int2 u : cells()) {
                 if( getSite(u).owner != myId ) {
                     // on my border?
@@ -290,12 +291,16 @@ class MyBot
                         }
                     }
                 }
+                else {
+                    my_cells.push_back(u);
+                }
             }
 
             if( targets.size() == 0 ) {
                 sendFrame(moves);
                 continue;
             }
+
 
             dbg << "found " << targets.size() << " on border, first: " << *targets.begin() << std::endl;
 
@@ -346,7 +351,7 @@ class MyBot
                 //----------------------------------------
                 //  Find and execute plan for capturable target with highest util rate
                 //----------------------------------------
-                auto util_rate = [&] (Int2 t) { return target_utils[t] / plans[t].turns; };
+                auto util_rate = [&] (Int2 t) { return pow(target_utils[t],1) / pow(plans[t].turns,1); };
                 Int2 best_target = *can_capture.begin();
                 float best_rate = util_rate(best_target);
                 for( Int2 t : can_capture ) {
@@ -380,6 +385,31 @@ class MyBot
             }
 
             //----------------------------------------
+            //  Now for all of mine that did not move..employ old logic
+            //----------------------------------------
+            assert(dfChanged.empty());
+            collectBestTargets(dfChanged);
+            updateDF(dfChanged);
+            std::vector<Int2> old_move_cells;
+            for( Int2 u : my_cells ) {
+                if( moved_cells.find(u) != moved_cells.end() ) {
+                    continue;
+                }
+                old_move_cells.push_back(u);
+            }
+            // move cells closer to edge first
+            std::sort( old_move_cells.begin(), old_move_cells.end(),
+                    [&] (Int2 a, Int2 b) {
+                        return getDF(a) < getDF(b);
+                    });
+            for( Int2 u : old_move_cells ) {
+                hlt::Location l = asLoc(u);
+                hlt::Move move = {l, (unsigned char)pick_move(l)};
+                apply_move(move);
+                moves.insert(move);
+            }
+
+            //----------------------------------------
             //  Send moves
             //----------------------------------------
             dbg << "FINAL MOVES: " << std::endl;
@@ -390,6 +420,7 @@ class MyBot
 
             frameCount++;
         }
+
 
         return 0;
     }
