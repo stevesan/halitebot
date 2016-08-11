@@ -23,6 +23,7 @@ const int CARDINALS[] = {NORTH, EAST, SOUTH, WEST};
 
 namespace hlt{
     typedef unsigned char PlayerId;
+    typedef unsigned char MoveDir;
 
 	struct Location{
 		unsigned short x, y;

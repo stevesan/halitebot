@@ -80,7 +80,6 @@ bool compute_capture_plan(const Map& map, Int2 target_pos, CapturePlan& plan )
             prior_production += map.getSite(u).production;
         }
         total_str += prior_production;
-        std::cout<< "total str " << total_str << std::endl;
 
         // can we get enough advancing this wave immediately?
         std::sort( wave.begin(), wave.end(), str_gt );
@@ -169,7 +168,7 @@ void output_moves( const CapturePlan& plan, Int2 target, Int2 map_size, hlt::Mov
                 // there is only 1 non-last-wave position that is adjacent to this
                 // so, find it
                 bool found = false;
-                for( unsigned char d : CARDINALS ) {
+                for( int d : CARDINALS ) {
                     Int2 v = u.nbor(d-1) % map_size;
                     if( plan.positions.find(v) != plan.positions.end() ) {
                         moves.insert( make_move(u, d) );

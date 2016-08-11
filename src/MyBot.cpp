@@ -8,6 +8,7 @@
 #include <queue>
 #include <cassert>
 #include <algorithm>
+#include <unordered_map>
 
 #include "hlt.hpp"
 #include "networking.hpp"
@@ -16,6 +17,7 @@
 #include "Grid2.hpp"
 #include "GridAlgos.hpp"
 #include "Util.hpp"
+#include "Capture.hpp"
 
 typedef int utility;
 
@@ -41,12 +43,14 @@ class MyBot
 	hlt::GameMap presentMap;
     Grid2<unsigned int> df;
 
-    Int2 mapDims() {
+    public:
+
+    Int2 size() const {
         return Int2(presentMap.width, presentMap.height);
     }
 
-    hlt::Location asLoc(Int2 u) {
-        u = u % mapDims();
+    hlt::Location asLoc(Int2 u) const {
+        u = u % size();
         return { (unsigned short)u.x, (unsigned short)u.y };
     }
 
@@ -54,7 +58,7 @@ class MyBot
         return Int2((int)u.x, (int)u.y);
     }
 
-    Range2 mapRange() {
+    Range2 cells() {
         return df.indices();
     }
 
@@ -65,15 +69,17 @@ class MyBot
     int getDF(hlt::Location u) { return getDF(asInt2(u)); }
     int getDF(hlt::Location u, int dir) { return getDF(asInt2(u), dir); }
 
-    hlt::Site getSite(hlt::Location u, int dir) { return presentMap.getSite(u,dir); }
+    hlt::Site getSite(hlt::Location u, int dir) const { return presentMap.getSite(u,dir); }
 
-    hlt::Site getSite(hlt::Location u) { return presentMap.getSite(u); }
+    hlt::Site getSite(hlt::Location u) const { return presentMap.getSite(u); }
 
-    hlt::Site getSite(Int2 u) { return presentMap.getSite(asLoc(u)); }
+    hlt::Site getSite(Int2 u) const { return presentMap.getSite(asLoc(u)); }
+
+    bool isOwned(Int2 u) const { return getSite(u).owner == myId; }
 
     void updateDF(std::queue<Int2>& dfChanged)
     {
-        const int DIST_MAX = mapDims().sum();
+        const int DIST_MAX = size().sum();
 
         for(Int2 u : df.indices()) {
             df.set(u, DIST_MAX);
@@ -215,7 +221,31 @@ class MyBot
         presentMap.setSite(move.loc, move.dir, dst);
     }
 
-    public:
+    hlt::Move make_move(Int2 u, int d) {
+        Int2 map_size = size();
+        assert(u.x >= 0);
+        assert(u.x < map_size.x);
+        assert(u.y >= 0);
+        assert(u.y < map_size.y);
+        assert(d < 5);
+        assert(d >= 0);
+        return hlt::Move( {asLoc(u), (unsigned char)d} );
+    }
+
+    Int2 pick_first_target() {
+        for( Int2 u : cells() ) {
+            if( getSite(u).owner != myId ) {
+                // adjacent to me?
+                for( Int2 v : Nbors(u) ) {
+                    v = v % size();
+                    if( getSite(v).owner == myId ) {
+                        return u;
+                    }
+                }
+            }
+        }
+        return Int2(0,0);
+    }
 
     int main(int argc, char** argv) {
         srand(time(NULL));
@@ -230,51 +260,59 @@ class MyBot
         std::cout.sync_with_stdio(0);
 
         getInit(myId, presentMap);
-        sendInit("TheDarkness");
+        sendInit("Roombo");
 
         hlt::MoveSet moves;
-        df.resize(mapDims());
+        df.resize(size());
 
         int frameCount = 0;
         std::queue<Int2> dfChanged;
 
+        std::vector<Int2> my_cells;
+        std::set<Int2> moved_cells;
+
         while(true) {
+            dbg << "frame " << frameCount << std::endl;
             getFrame(presentMap);
-
-            assert(dfChanged.empty());
-            collectBestTargets(dfChanged);
-            updateDF(dfChanged);
-
             moves.clear();
+            moved_cells.clear();
 
-            // find the max distance
-            unsigned int maxDist = 0;
-            for( Int2 u : df.indices() ) {
+            my_cells.clear();
+            for(Int2 u : df.indices()) {
                 if( getSite(u).owner == myId ) {
-                    maxDist = std::max( df.get(u), maxDist );
+                    my_cells.push_back(u);
                 }
             }
 
-            for( int phase_dist = 1; phase_dist <= maxDist; phase_dist++ ) {
-
-                FORMAP(presentMap, x, y) {
-                    hlt::Location u = {x,y};
-
-                    if( getDF(u) != phase_dist ) {
-                        continue;
-                    }
-
-                    if( getSite(u).owner != myId ) {
-                        continue;
-                    }
-
-                    hlt::Move move = {u, (unsigned char)pick_move(u)};
-                    apply_move(move);
-                    moves.insert(move);
+            // just attack the first target
+            Int2 target = pick_first_target();
+            dbg << "target = " << target << std::endl;
+            CapturePlan plan;
+            if( compute_capture_plan(*this, target, plan) ) {
+                dbg << "capturing using " << plan.positions.size() << " cells" << std::endl;
+                output_moves(plan, target, size(), moves);
+                for(Int2 u : plan.positions) {
+                    moved_cells.insert(u);
                 }
             }
 
+            //----------------------------------------
+            //  Still the rest
+            //----------------------------------------
+            for(Int2 u : my_cells) {
+                if( moved_cells.find(u) == moved_cells.end() ) {
+                    moves.insert(make_move(u, STILL));
+                }
+            }
+
+            //----------------------------------------
+            //  Send moves
+            //----------------------------------------
+            for(auto move : moves) {
+                dbg << asInt2(move.loc) << " " << DIR2STR[move.dir] << std::endl;
+            }
             sendFrame(moves);
+
             frameCount++;
         }
 
