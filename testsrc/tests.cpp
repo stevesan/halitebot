@@ -41,7 +41,7 @@ public:
                 (unsigned char)prod.get(u)});
     }
 
-    bool isOwned(Int2 u) const {
+    bool usable_for_capture(Int2 u) const {
         return owner.get(u) == 1;
     }
 

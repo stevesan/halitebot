@@ -50,7 +50,7 @@ bool compute_capture_plan(const Map& map, Int2 target_pos, CapturePlan& plan )
         for( auto u : prev_wave ) {
             for( auto v : Nbors(u) ) {
                 v = v % map.size();
-                if( map.isOwned(v) && !is_visited(v) ) {
+                if( map.usable_for_capture(v) && !is_visited(v) ) {
                     wave.push_back(v);
                     visited.insert(v);
                 }

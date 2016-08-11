@@ -28,20 +28,13 @@ static std::ostream& operator<<( std::ostream& os, hlt::Location u ) {
     return os;
 }
 
-void output_moveset( std::ofstream& os, const hlt::MoveSet& moves ) {
-    for(auto move = moves.begin(); move != moves.end(); ++move) {
-        auto l = move->loc;
-        auto d = move->dir;
-        os << l.x << ", " << l.y << " : " << DIR2STR[d] << std::endl;
-    }
-}
-
 class MyBot
 {
     std::ofstream dbg;
     hlt::PlayerId myId;
 	hlt::GameMap presentMap;
     Grid2<unsigned int> df;
+    std::set<Int2> moved_cells;
 
     public:
 
@@ -75,7 +68,11 @@ class MyBot
 
     hlt::Site getSite(Int2 u) const { return presentMap.getSite(asLoc(u)); }
 
-    bool isOwned(Int2 u) const { return getSite(u).owner == myId; }
+    bool usable_for_capture(Int2 u) const {
+        return getSite(u).owner == myId
+            // if we moved a cell already this frame, we must've used it to capture something else
+            && moved_cells.find(u) == moved_cells.end();
+    }
 
     void updateDF(std::queue<Int2>& dfChanged)
     {
@@ -247,6 +244,10 @@ class MyBot
         return Int2(0,0);
     }
 
+    float compute_target_util(Int2 u) {
+        return getSite(u).production * 1.0;
+    }
+
     int main(int argc, char** argv) {
         srand(time(NULL));
 
@@ -269,7 +270,6 @@ class MyBot
         std::queue<Int2> dfChanged;
 
         std::vector<Int2> my_cells;
-        std::set<Int2> moved_cells;
 
         while(true) {
             dbg << "frame " << frameCount << std::endl;
@@ -277,37 +277,112 @@ class MyBot
             moves.clear();
             moved_cells.clear();
 
-            my_cells.clear();
-            for(Int2 u : df.indices()) {
-                if( getSite(u).owner == myId ) {
-                    my_cells.push_back(u);
+            //----------------------------------------
+            //  Find targets
+            //----------------------------------------
+            std::set<Int2> targets;
+            for(Int2 u : cells()) {
+                if( getSite(u).owner != myId ) {
+                    // on my border?
+                    for( Int2 v : Nbors(u) ) {
+                        if( getSite(v).owner == myId ) {
+                            targets.insert(u);
+                        }
+                    }
                 }
             }
 
-            // just attack the first target
-            Int2 target = pick_first_target();
-            dbg << "target = " << target << std::endl;
-            CapturePlan plan;
-            if( compute_capture_plan(*this, target, plan) ) {
-                dbg << "capturing using " << plan.positions.size() << " cells" << std::endl;
-                output_moves(plan, target, size(), moves);
-                for(Int2 u : plan.positions) {
+            if( targets.size() == 0 ) {
+                sendFrame(moves);
+                continue;
+            }
+
+            dbg << "found " << targets.size() << " on border, first: " << *targets.begin() << std::endl;
+
+            //----------------------------------------
+            //  Compute utils, allocate plans
+            //----------------------------------------
+            std::unordered_map<Int2, float> target_utils;
+            std::unordered_map<Int2, CapturePlan> plans;
+            for( Int2 t : targets ) {
+                target_utils[t] = compute_target_util(t);
+                plans[t] = CapturePlan();
+            }
+
+            //----------------------------------------
+            //  Main greedy util-rate-capture loop
+            //----------------------------------------
+            std::unordered_map<Int2, std::set<Int2> > cell_targets;
+            std::set<Int2> need_replan;
+            std::set<Int2> can_capture;
+
+            for( Int2 t : targets ) {
+                need_replan.insert(t);
+            }
+
+            while(true) {
+                //----------------------------------------
+                //  Update plans that need updating
+                //----------------------------------------
+                for( Int2 t : need_replan ) {
+                    CapturePlan& plan = plans[t];
+                    if( compute_capture_plan(*this, t, plan) ) {
+                        can_capture.insert(t);
+                        for(Int2 u : plan.positions) {
+                            cell_targets[u].insert(t);
+                        }
+                    }
+                    else {
+                        can_capture.erase(t);
+                    }
+                }
+                need_replan.clear();
+
+                if(can_capture.empty()) {
+                    // all done
+                    break;
+                }
+
+                //----------------------------------------
+                //  Find and execute plan for capturable target with highest util rate
+                //----------------------------------------
+                auto util_rate = [&] (Int2 t) { return target_utils[t] / plans[t].turns; };
+                Int2 best_target = *can_capture.begin();
+                float best_rate = util_rate(best_target);
+                for( Int2 t : can_capture ) {
+                    if( util_rate(t) > best_rate ) {
+                        best_rate = util_rate(t);
+                        best_target = t;
+                    }
+                }
+
+                dbg << "capturing target " << best_target << std::endl;
+                output_moves( plans[best_target], best_target, size(), moves );
+
+                // update some state
+                can_capture.erase(best_target);
+                for( Int2 u : plans[best_target].positions ) {
                     moved_cells.insert(u);
                 }
-            }
 
-            //----------------------------------------
-            //  Still the rest
-            //----------------------------------------
-            for(Int2 u : my_cells) {
-                if( moved_cells.find(u) == moved_cells.end() ) {
-                    moves.insert(make_move(u, STILL));
+                //----------------------------------------
+                //  Mark the ones that need replan
+                //  Go through all the cells we just used, and mark the targets that use them
+                //----------------------------------------
+                need_replan.clear();
+                for(Int2 u : plans[best_target].positions ) {
+                    for(Int2 t : cell_targets[u]) {
+                        need_replan.insert(t);
+                    }
                 }
+                // redundant
+                need_replan.erase(best_target);
             }
 
             //----------------------------------------
             //  Send moves
             //----------------------------------------
+            dbg << "FINAL MOVES: " << std::endl;
             for(auto move : moves) {
                 dbg << asInt2(move.loc) << " " << DIR2STR[move.dir] << std::endl;
             }

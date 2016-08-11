@@ -1,11 +1,11 @@
 
-TODO: check for all cases where we may be relying on ==.. but due to wrapping algebra, we may be wrong
-TODO: implement the "min steps to capture" in an isolated way
+DONE: check for all cases where we may be relying on ==.. but due to wrapping algebra, we may be wrong
+DONE: implement the "min steps to capture" in an isolated way
 
-TODO: test case where...you just wait for the last wave to produce, then bring in.
+DONE: test case where...you just wait for the last wave to produce, then bring in.
     so it takes 1 more step, but nkjjjjjjjjk
 
-QUESTION:
+ALGO:
 
     borders = all touching neutral cells
     compute util for all borders
@@ -27,7 +27,7 @@ QUESTION:
             bfs, with "leaf-only move" logic
 
     structures needed:
-        map from my sites -> [used:boolean, set<Int2> usingBorders]
+        map from my sites -> [used:boolean, set<Int2> usingTargets]
         map from border to -> [util, steps]
 
 new algo:
