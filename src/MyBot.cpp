@@ -320,7 +320,6 @@ class MyBot
             //----------------------------------------
             std::unordered_map<Int2, std::set<Int2> > cell_targets;
             std::set<Int2> need_replan;
-            std::set<Int2> can_capture;
 
             for( Int2 t : targets ) {
                 need_replan.insert(t);
@@ -335,19 +334,18 @@ class MyBot
                 for( Int2 t : need_replan ) {
                     CapturePlan& plan = plans[t];
                     if( compute_capture_plan(*this, t, plan) ) {
-                        can_capture.insert(t);
                         for(Int2 u : plan.positions) {
                             cell_targets[u].insert(t);
                         }
                     }
                     else {
-                        can_capture.erase(t);
+                        // not possible
+                        plans.erase(t);
                     }
                 }
                 need_replan.clear();
 
-                if(can_capture.empty()) {
-                    // all done
+                if( plans.empty() ) {
                     break;
                 }
 
@@ -355,16 +353,17 @@ class MyBot
                 //  Find and execute plan for capturable target with highest util rate
                 //----------------------------------------
                 auto util_rate = [&] (Int2 t) { return pow(target_utils[t],1) / pow(plans[t].turns,1); };
-                Int2 best_target = *can_capture.begin();
+                Int2 best_target = plans.begin()->first;
                 float best_rate = util_rate(best_target);
-                for( Int2 t : can_capture ) {
+                for( auto pair : plans ) {
+                    Int2 t = pair.first;
                     if( util_rate(t) > best_rate ) {
                         best_rate = util_rate(t);
                         best_target = t;
                     }
                 }
 
-                //dbg << "capturing target " << best_target << std::endl;
+                dbg << "capturing target " << best_target << std::endl;
                 output_moves( plans[best_target], best_target, size(), moves );
                 num_captures++;
 
@@ -373,7 +372,7 @@ class MyBot
                 }
 
                 // update some state
-                can_capture.erase(best_target);
+                plans.erase(best_target);
                 for( Int2 u : plans[best_target].positions ) {
                     moved_cells.insert(u);
                 }
